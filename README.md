@@ -28,11 +28,20 @@ Actual iOS simulator captures, using synthetic accounts in an internal-test envi
 
 ## My Role
 
-I founded Hanin Taxi during graduate school, recruited a React engineer, a Flutter
-engineer, and a Figma designer, and led product planning and delivery. I contributed
-to APIs and selected Flutter/React implementation and reviewed the team's code.
-The team-built platform became my M.S. capstone and led to continued work at
-World Bankcard.
+I founded Hanin Taxi during graduate school and contributed API, Flutter, and React
+code alongside a React engineer, a Flutter engineer, and a Figma designer I recruited.
+My work included:
+
+- Evaluating proximity-based dispatch against return-to-base driver queue order.
+- Implementing regional pickup restrictions based on company operating boundaries.
+- Developing the React admin driver-location map and manual dispatch workflows.
+- Testing 5- and 10-second rider-map refresh intervals, selecting Mapbox for project
+  cost constraints, and connecting driver navigation to Waze and Google Maps.
+- Leading product planning, code review, and cross-interface workflow testing.
+
+The team-built platform became my M.S. capstone. World Bankcard's interest led to
+a full-time Software Engineer role exploring restaurant-delivery integration with
+the dispatch platform. That integration remained exploratory, not a shipped service.
 
 This snapshot separates the original team implementation from the October 2026
 demo restoration and engineering review. See [contribution scope](docs/CONTRIBUTIONS.md).

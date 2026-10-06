@@ -3,17 +3,42 @@
 ## Original Product
 
 Woochang Chang founded the venture during graduate school, recruited one React
-engineer, one Flutter engineer, and one Figma designer, and led planning,
-coordination, and workflow testing. His confirmed hands-on contribution includes
-API work, selected Flutter/React implementation, and review of the team's code.
+engineer, one Flutter engineer, and one Figma designer. His responsibilities
+combined hands-on API and selected Flutter/React development with product planning,
+code review, and cross-interface workflow testing.
+
+### Dispatch and Operator Workflows
+
+- Evaluated nearby-driver matching against queue-based assignment for taxi companies
+  whose drivers returned to the company base and waited their turn after trips.
+- Implemented company-specific regional pickup restrictions, including a New Jersey
+  operator's New York pickup constraint. These describe configured operating rules,
+  not a comprehensive legal-compliance certification.
+- Developed the React admin driver-location map and manual dispatch workflows.
+  The snapshot's map fetches company driver positions, displays working status,
+  and supports focusing on a driver. Operator-entered bookings feed the matching queue.
+
+### Mapping and Navigation Decisions
+
+- Tested 5- and 10-second rider-map refresh intervals to consider location freshness
+  alongside mapping/service cost constraints.
+- Selected Mapbox for the project's cost constraints and connected driver navigation
+  to Waze and Google Maps rather than implementing turn-by-turn guidance in the platform.
+
+These historical experiments are not the current runtime's refresh interval or a
+measured cost-reduction claim. The snapshot's admin map has a manual refresh control
+and legacy sample markers; it does not demonstrate continuous location streaming.
+The operator booking flow does not establish a direct driver-selection override.
 
 The implementation was collaborative. This repository begins with a source
 snapshot of that team-built product. Contribution descriptions reflect confirmed
 responsibilities; its Git history records the preparation and maintenance of this
 snapshot rather than the original development timeline.
 
-The platform was submitted as an M.S. capstone, followed by continued work at
-World Bankcard. The product reached internal testing and demonstration.
+The platform was submitted as an M.S. capstone. World Bankcard's interest led to a
+full-time Software Engineer role exploring integration with its restaurant application
+for delivery. That integration remained exploratory. The platform reached internal
+testing and demonstration, not commercial passenger adoption.
 
 ## October 2026 Engineering Review
 
