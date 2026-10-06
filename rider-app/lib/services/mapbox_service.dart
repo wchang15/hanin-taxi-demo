@@ -8,7 +8,7 @@ import '../models/user_location.dart';
 import '../utils/constants.dart';
 import '../utils/secure_storage.dart';
 
-// Not being used yet. Could use for cheaper route call
+// Rider route geometry uses Directions; address search goes through the API.
 class MapBoxService {
   static Future<Tuple2<List<LatLng>?, int?>> getDirection(
       LatLng from, LatLng to) async {

@@ -6,6 +6,7 @@ and a React operator dashboard.
 
 [Product case study](https://www.woochangchang.com/hanin-taxi.html) |
 [Architecture](docs/ARCHITECTURE.md) |
+[Dispatch and mapping decisions](docs/DISPATCH_AND_MAPPING.md) |
 [Contribution scope](docs/CONTRIBUTIONS.md) |
 [Verification](docs/VALIDATION.md)
 
@@ -32,7 +33,8 @@ I founded Hanin Taxi during graduate school and contributed API, Flutter, and Re
 code alongside a React engineer, a Flutter engineer, and a Figma designer I recruited.
 My work included:
 
-- Evaluating proximity-based dispatch against return-to-base driver queue order.
+- Designing company-round-robin dispatch while preserving each company's driver
+  queue: `A1 -> B1 -> A2 -> B2`, after comparing it with nearest-driver assignment.
 - Implementing regional pickup restrictions based on company operating boundaries.
 - Developing the React admin driver-location map and manual dispatch workflows.
 - Testing 5- and 10-second rider-map refresh intervals, selecting Mapbox for project
@@ -44,7 +46,11 @@ a full-time Software Engineer role exploring restaurant-delivery integration wit
 the dispatch platform. That integration remained exploratory, not a shipped service.
 
 This snapshot separates the original team implementation from the October 2026
-demo restoration and engineering review. See [contribution scope](docs/CONTRIBUTIONS.md).
+demo restoration and engineering review. The current matcher uses global driver
+queue order plus eligible-request scoring, not the original company rotation.
+See [contribution scope](docs/CONTRIBUTIONS.md) and the
+[dispatch/mapping decision record](docs/DISPATCH_AND_MAPPING.md) for that boundary,
+current 30/5/10-second timers, and a sourced routing-cost example.
 
 ## Run the Local Demo
 

@@ -11,6 +11,9 @@ code review, and cross-interface workflow testing.
 
 - Evaluated nearby-driver matching against queue-based assignment for taxi companies
   whose drivers returned to the company base and waited their turn after trips.
+  Selected company rotation with company-internal queue order: `A1 -> B1 -> A2 -> B2`.
+  The current demo matcher does not reproduce that round-robin policy; see the
+  [decision record](DISPATCH_AND_MAPPING.md) for the implementation boundary.
 - Implemented company-specific regional pickup restrictions, including a New Jersey
   operator's New York pickup constraint. These describe configured operating rules,
   not a comprehensive legal-compliance certification.
@@ -26,7 +29,10 @@ code review, and cross-interface workflow testing.
   to Waze and Google Maps rather than implementing turn-by-turn guidance in the platform.
 
 These historical experiments are not the current runtime's refresh interval or a
-measured cost-reduction claim. The October review replaced legacy sample markers
+measured cost-reduction claim. The current driver GPS/status timers are 30 seconds;
+driver queue checks are five seconds and rider markers follow SignalR events.
+Historical invoice amounts and the final experimental interval remain unverified.
+The October review replaced legacy sample markers
 with API-only driver positions and 10-second polling, plus manual refresh. This is
 polling, not continuous location streaming; the API has no per-position GPS timestamp.
 The operator booking flow does not establish a direct driver-selection override.
