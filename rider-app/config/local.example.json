@@ -1,0 +1,10 @@
+{
+  "API_BASE_URL": "http://127.0.0.1:5050/api/",
+  "HUB_BASE_URL": "http://127.0.0.1:5050/Taxi",
+  "DEMO_MODE": true,
+  "MAPBOX_API_KEY": "",
+  "DEFAULT_MAP_LATITUDE": 40.8509,
+  "DEFAULT_MAP_LONGITUDE": -73.9701,
+  "STRIPE_PUBLISHABLE_KEY": "",
+  "MAP_TILE_URL_TEMPLATE": "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+}
