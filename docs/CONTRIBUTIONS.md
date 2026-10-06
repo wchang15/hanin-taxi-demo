@@ -26,8 +26,9 @@ code review, and cross-interface workflow testing.
   to Waze and Google Maps rather than implementing turn-by-turn guidance in the platform.
 
 These historical experiments are not the current runtime's refresh interval or a
-measured cost-reduction claim. The snapshot's admin map has a manual refresh control
-and legacy sample markers; it does not demonstrate continuous location streaming.
+measured cost-reduction claim. The October review replaced legacy sample markers
+with API-only driver positions and 10-second polling, plus manual refresh. This is
+polling, not continuous location streaming; the API has no per-position GPS timestamp.
 The operator booking flow does not establish a direct driver-selection override.
 
 The implementation was collaborative. This repository begins with a source
@@ -58,6 +59,8 @@ The accompanying tests and commands let a reviewer inspect the results directly.
 - Replaced the operator's legacy build toolchain with Vite and updated its router.
 - Fixed sign-out persistence, offline sign-in handling, and mobile dispatch layout.
 - Added a session regression test and desktop/mobile browser scenarios.
+- Removed sample drivers and HTML popup interpolation; added stable markers,
+  API position validation, non-overlapping polling, and map error/empty states.
 
 These changes are current maintenance work, not historical employment outcomes.
 

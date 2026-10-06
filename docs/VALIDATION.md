@@ -12,8 +12,8 @@ separately from the local checks below.
 | Rider Flutter tests                   | 11 passed                     | Route request lifecycle, camera bounds, coordinate conversion, airport eligibility       |
 | Driver Flutter tests                  | 3 passed                      | Location label and payment-type parsing                                                  |
 | Operator Vite production build        | Passed                        | React 18, Vite 8.3.3, React Router 7.18.4                                                |
-| Operator session regression           | 1 passed                      | Sign-out clears in-memory and persisted identity                                         |
-| Operator Playwright suite             | 14 passed, 0 skipped, 0 flaky | Seven scenarios at desktop and mobile sizes; real built app and isolated API             |
+| Operator unit regressions             | 4 passed                      | Sign-out state and driver-coordinate validation/deduplication                            |
+| Operator Playwright suite             | 18 passed, 0 skipped, 0 flaky | Nine scenarios at desktop and mobile sizes; real built app and isolated API              |
 | Source-pattern preflight              | No findings                   | Selected credential patterns and private-config filenames only                           |
 | Backend NuGet vulnerability query     | No listed vulnerable packages | Current NuGet advisory data, including transitive dependencies                           |
 | Operator npm audit                    | 0 listed vulnerabilities      | Full installed dependency tree, including development tooling; not a code security audit |
@@ -21,9 +21,10 @@ separately from the local checks below.
 Test environment: macOS arm64, .NET SDK 10.0.401 / runtime 10.0.12,
 Flutter 3.47.6 / Dart 3.13.5. Initial backend/API checks used Node.js 20.17.0;
 operator checks used Node.js 24.19.0 and Playwright 1.63.0 with Chromium 153.
-The owner launched the browser suite from Terminal after the agent sandbox blocked
-Chromium process startup. The resulting JSON report confirmed 14 expected results,
-zero unexpected results, zero skipped cases, and zero flaky cases in 12.8 seconds.
+The owner launched the initial 14-case browser suite from Terminal after the agent
+sandbox blocked Chromium startup. The expanded 18-case suite passed in
+[GitHub Actions run 37538355604](https://github.com/wchang15/hanin-taxi-demo/actions/runs/37538355604)
+at commit `d7996f4`, with zero failed, skipped, or flaky cases.
 Linux CI uses Node.js 22 for shared checks and Node.js 24 for the operator job.
 
 ## Failures Reproduced Before Fixing
@@ -67,11 +68,15 @@ listed vulnerabilities. CI now runs the audit, session test, build, and browser 
 - Network-error messaging leaves the sign-in form usable.
 - Online sign-out clears stored identity and prevents protected-route access.
 - Offline sign-out still clears the local session and exits the protected UI.
+- API-only map markers, refreshed positions, and responsive driver-list layout.
+- Empty/error/retry map states. These two map scenarios use intercepted synthetic positions.
 
 The suite does not place real taxi requests or establish complete dispatch CRUD
 coverage. Mobile Chromium emulation is not physical iPhone/Safari testing.
 Connected Chrome review additionally checked the mobile navigation and seeded
-driver list. Screenshots are actual browser captures of synthetic data.
+driver list and API-backed map at 1280px and 390px widths. Screenshots are actual
+browser captures of synthetic data. The map preserves the viewport while polling;
+"Last fetched" is a fetch timestamp, not proof of GPS freshness.
 
 ## Not Yet Verified
 
