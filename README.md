@@ -18,12 +18,13 @@ Actual iOS simulator captures, using synthetic accounts in an internal-test envi
 
 ## Start Here
 
-| Engineering question                        | Implementation                                                                                                             | Evidence                                                                         |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Which driver is eligible for a request?     | [DispatchScoringService](backend/Services/DispatchScoringService.cs)                                                       | [24 dispatch tests](tests/HaninTaxi.Tests/DispatchScoringTests.cs)               |
-| What if an old route arrives after a reset? | [TripController](rider-app/lib/controllers/trip_controller.dart)                                                           | [Delayed-response regression tests](rider-app/test/trip_route_request_test.dart) |
-| How does a route avoid map controls?        | [Camera fitting](rider-app/lib/utils/route_camera.dart)                                                                    | [Viewport and inset tests](rider-app/test/route_camera_test.dart)                |
-| Does settlement match the rider's quote?    | [Trip confirmation](backend/Controllers/TripController.cs), [payment completion](backend/Controllers/PaymentController.cs) | [Isolated demo API checks](scripts/test-demo.mjs)                                |
+| Engineering question                        | Implementation                                                                                                             | Evidence                                                                                                                          |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Which driver is eligible for a request?     | [DispatchScoringService](backend/Services/DispatchScoringService.cs)                                                       | [24 dispatch tests](tests/HaninTaxi.Tests/DispatchScoringTests.cs)                                                                |
+| What if an old route arrives after a reset? | [TripController](rider-app/lib/controllers/trip_controller.dart)                                                           | [Delayed-response regression tests](rider-app/test/trip_route_request_test.dart)                                                  |
+| How does a route avoid map controls?        | [Camera fitting](rider-app/lib/utils/route_camera.dart)                                                                    | [Viewport and inset tests](rider-app/test/route_camera_test.dart)                                                                 |
+| Does settlement match the rider's quote?    | [Trip confirmation](backend/Controllers/TripController.cs), [payment completion](backend/Controllers/PaymentController.cs) | [Isolated demo API checks](scripts/test-demo.mjs)                                                                                 |
+| Does sign-out remove stored identity?       | [Session store](admin-dashboard/src/store/userStore.js)                                                                    | [Persistence regression test](admin-dashboard/tests/session.test.mjs), [browser scenarios](admin-dashboard/e2e/operator.spec.mjs) |
 
 ## My Role
 
@@ -38,7 +39,7 @@ demo restoration and engineering review. See [contribution scope](docs/CONTRIBUT
 
 ## Run the Local Demo
 
-Prerequisites: .NET SDK 10, Node.js 20 or later, Flutter 3.47.6 for the mobile apps,
+Prerequisites: .NET SDK 10, Node.js 22.12+ (22.x or 24+), Flutter 3.47.6 for the mobile apps,
 and Xcode with an iOS simulator for iPhone testing.
 
 From the repository root:
@@ -101,10 +102,16 @@ flutter test
 
 # Run from admin-dashboard.
 npm ci
+npm run audit
+npm test
 CI=true npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
 
 [GitHub Actions configuration](.github/workflows/ci.yml) repeats these checks.
+The browser suite builds the actual operator app and starts a separate in-memory
+API on port 5796 and frontend on port 4196. It refuses to reuse existing servers.
 A workflow definition is not a claim that a remote run has passed. Local results
 and unverified areas are recorded in [VALIDATION.md](docs/VALIDATION.md).
 

@@ -22,7 +22,7 @@ const store = (set) => ({
   },
 
   reset: () => {
-    set({ initialState });
+    set(initialState);
     Cookies.remove('refreshToken')
     return true;
   },

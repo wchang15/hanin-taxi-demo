@@ -19,6 +19,9 @@
 # Build and dependency output
 **/node_modules/
 **/build/
+**/build-e2e/
+**/test-results/
+**/playwright-report/
 **/.dart_tool/
 **/.flutter-plugins*
 **/.gradle/
@@ -36,4 +39,3 @@
 **/.DS_Store
 *.log
 *.zip
-

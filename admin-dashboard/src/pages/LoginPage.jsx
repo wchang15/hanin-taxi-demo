@@ -78,11 +78,10 @@ export default function LoginPage() {
   });
 
   const {
-    reset,
     setError,
     handleSubmit,
     control,
-    formState: { errors, isSubmitting, isSubmitSuccessful },
+    formState: { errors, isSubmitting },
   } = methods;
 
   const loginUser = userStore((state) => state.setUser);
@@ -98,8 +97,10 @@ export default function LoginPage() {
         window.location.href = '/dashboard';
       })
       .catch((error) => {
-        reset();
-        setError('afterSubmit', { type: 'custom', message: error.response.data });
+        const message = typeof error.response?.data === 'string'
+          ? error.response.data
+          : 'Unable to sign in. Check your connection and try again.';
+        setError('afterSubmit', { type: 'custom', message });
       });
   };
 
@@ -154,7 +155,7 @@ export default function LoginPage() {
                         label="아이디*"
                         size="small"
                         focused
-                        disabled={isSubmitSuccessful || isSubmitting}
+                        disabled={isSubmitting}
                         color={!!errors.account ? 'warning' : 'grey'}
                         {...field}
                         fullWidth
@@ -176,7 +177,7 @@ export default function LoginPage() {
                       <TextField
                         sx={{ marginTop: 3 }}
                         {...field}
-                        disabled={isSubmitSuccessful || isSubmitting}
+                        disabled={isSubmitting}
                         fullWidth
                         value={typeof field.value === 'number' && field.value === 0 ? '' : field.value}
                         name="password"
@@ -221,7 +222,7 @@ export default function LoginPage() {
                   size="large"
                   type="submit"
                   variant="contained"
-                  loading={isSubmitSuccessful || isSubmitting}
+                  loading={isSubmitting}
                 >
                   로그인
                 </LoadingButton>

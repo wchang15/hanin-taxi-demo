@@ -91,3 +91,17 @@ top-inset values. They do not replace native screenshot review.
 temporary loopback port. It disables automatic matching during assertions, creates
 only synthetic records, and terminates its child process in a finally block.
 It never targets the user's existing simulator server or a public endpoint.
+
+## 6. Operator Session and Browser Verification
+
+The React application uses Vite and a client-side router. Public `VITE_*` variables
+select the API and SignalR endpoints. The operator session uses Zustand persistence;
+sign-out resets the active state and removes the refresh-token cookie. A failed
+server logout still clears local state, but does not establish server-side revocation.
+
+The [session test](../admin-dashboard/tests/session.test.mjs) guards against identity
+remaining in persistence after reset. The [browser suite](../admin-dashboard/e2e/operator.spec.mjs)
+builds the app, launches its own synthetic API, and checks desktop/mobile login,
+dispatch navigation, reload, and failure recovery. It does not mock successful API responses.
+
+![Actual desktop operator new-call form with synthetic data](images/operator-desktop.png)

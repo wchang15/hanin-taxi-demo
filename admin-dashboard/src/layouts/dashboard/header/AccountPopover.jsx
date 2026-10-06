@@ -24,18 +24,21 @@ export default function AccountPopover() {
   const reset = userStore((state) => state.reset);
 
   const handleLogout = async () => {
-    if (jwtToken) {
-      await apiService()
-        .get(`/Login/Logout`, {
+    try {
+      if (jwtToken) {
+        await apiService().get(`/Login/Logout`, {
+          timeout: 5000,
           headers: {
             Authorization: `Bearer ${jwtToken}`,
             'Content-Type': 'application/json',
           },
-        })
-        .then((response) => {
-          reset();
-          window.location.href = '/login';
         });
+      }
+    } catch {
+      // Local sign-out must work even if the server cannot revoke the session.
+    } finally {
+      reset();
+      window.location.href = '/login';
     }
   };
 
@@ -44,6 +47,7 @@ export default function AccountPopover() {
       {company && (
         <>
           <IconButton
+            aria-label="Account menu"
             onClick={handleOpen}
             sx={{
               p: 0,

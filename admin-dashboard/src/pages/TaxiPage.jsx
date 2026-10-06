@@ -28,15 +28,13 @@ import {
 } from '../utils/constants';
 
 const StyledSearch = styled(OutlinedInput)(({ theme }) => ({
-  marginRight: '8px',
   height: '37px',
-  width: 240,
+  width: '100%',
   transition: theme.transitions.create(['box-shadow', 'width'], {
     easing: theme.transitions.easing.easeInOut,
     duration: theme.transitions.duration.shorter,
   }),
   '&.Mui-focused': {
-    width: 320,
     boxShadow: theme.customShadows.z8,
   },
   '& fieldset': {
@@ -54,7 +52,9 @@ export default function TaxiPage({ setIsLoading, setSnackBarMessage, toast }) {
   const [note, setNote] = useState(null);
   const [price, setPrice] = useState(null);
 
-  const [driverNumber, setDriverNumber] = useState();
+  const [driverNumber, setDriverNumber] = useState('');
+  const visibleCalls = calls?.filter(call => !driverNumber ||
+    String(call.assignedDriver?.driverNumber ?? '').includes(driverNumber));
 
   const isDesktop = useResponsive('up', 'lg');
 
@@ -253,7 +253,7 @@ export default function TaxiPage({ setIsLoading, setSnackBarMessage, toast }) {
         <title> Taxi | Hanin Taxi </title>
       </Helmet>
       <Container maxWidth={false}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
+        <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="space-between" gap={2} mb={3}>
           <Box>
             <Typography variant="h4" gutterBottom>
               Live Dispatch
@@ -262,12 +262,13 @@ export default function TaxiPage({ setIsLoading, setSnackBarMessage, toast }) {
               Monitor active requests and driver assignments in real time.
             </Typography>
           </Box>
-          <Box display={'flex'} alignItems={'center'}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: { xs: 'wrap', md: 'nowrap' }, gap: 1 }}>
             {!isDesktop ? (
               <StyledSearch
                 size="small"
                 type="number"
                 placeholder="Search by driver number..."
+                inputProps={{ 'aria-label': 'Search by driver number' }}
                 value={driverNumber}
                 onChange={(e) => {
                   setDriverNumber(e.target.value);
@@ -281,7 +282,7 @@ export default function TaxiPage({ setIsLoading, setSnackBarMessage, toast }) {
             ) : null}
             <Button
               variant="outlined"
-              sx={{ marginRight: 1 }}
+              sx={{ flex: { xs: 1, md: 'initial' }, whiteSpace: 'nowrap' }}
               onClick={() => {
                 setOpen({
                   title: '완료된 콜 전체 지우기',
@@ -296,7 +297,7 @@ export default function TaxiPage({ setIsLoading, setSnackBarMessage, toast }) {
 
             <Button
               variant="contained"
-              sx={{ color: 'white', marginRight: 1 }}
+              sx={{ color: 'white', flex: { xs: 1, md: 'initial' }, whiteSpace: 'nowrap' }}
               onClick={() => {
                 // if (calls.filter(call => call.stage === 1).length > 5) {
                 //   setSnackBarMessage('Call 카드 완료후 추가 하십시오');
@@ -309,7 +310,7 @@ export default function TaxiPage({ setIsLoading, setSnackBarMessage, toast }) {
             </Button>
           </Box>
         </Stack>
-        <Stack direction="row" spacing={1} mb={4} flexWrap="wrap" useFlexGap>
+        <Stack direction="row" gap={1} mb={4} flexWrap="wrap">
           <Chip label={`${calls?.length || 0} active trips`} color="primary" variant="outlined" />
           <Chip label={`${calls?.filter((call) => call.stage === 4).length || 0} driver en route`} variant="outlined" />
           <Chip label={`${calls?.filter((call) => call.stage === 3).length || 0} matching`} variant="outlined" />
@@ -317,8 +318,8 @@ export default function TaxiPage({ setIsLoading, setSnackBarMessage, toast }) {
         {calls && (
           <Box>
             <Grid container spacing={3}>
-              {calls.map((elem) => {
-                return <TaxiCard call={elem} calls={calls} setOpen={setOpen} setNote={setNote} setPrice={setPrice} />;
+              {visibleCalls.map((elem) => {
+                return <TaxiCard key={elem.id} call={elem} calls={calls} setOpen={setOpen} setNote={setNote} setPrice={setPrice} />;
               })}
             </Grid>
           </Box>

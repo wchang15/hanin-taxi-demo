@@ -30,6 +30,9 @@ The accompanying tests and commands let a reviewer inspect the results directly.
 - Added isolated API checks for trip completion and quote-to-settlement consistency.
 - Corrected cash-fare accounting and rounded quotes before payment confirmation.
 - Prepared a source preflight, CI configuration, and documented known limitations.
+- Replaced the operator's legacy build toolchain with Vite and updated its router.
+- Fixed sign-out persistence, offline sign-in handling, and mobile dispatch layout.
+- Added a session regression test and desktop/mobile browser scenarios.
 
 These changes are current maintenance work, not historical employment outcomes.
 

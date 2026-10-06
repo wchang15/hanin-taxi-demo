@@ -15,7 +15,7 @@ make it a production-ready transportation or payment service.
 - Test PostgreSQL schema migration and query behavior on a disposable real database.
 - Add a PostgreSQL migration for the new `Payment.CashAmount` field before enabling
   database-backed use; only the InMemory path is supported in this snapshot.
-- Review dependency advisories, especially the inherited React build toolchain.
+- Continue dependency advisory monitoring; a clean registry audit is not a code security audit.
 - Configure supported routing/tile, messaging, monitoring, backup, and hosting services.
 - Revalidate platform-specific permissions and release signing on physical devices.
 
@@ -25,6 +25,7 @@ make it a production-ready transportation or payment service.
 - Recovery from SignalR disconnects, duplicate events, or missed trip updates.
 - Current airport licensing rules or regulatory compliance.
 - Production migrations, real-card settlement, or live SMS delivery.
+- Server-side token revocation when an operator signs out without a network connection.
 
 ## Publication Review
 

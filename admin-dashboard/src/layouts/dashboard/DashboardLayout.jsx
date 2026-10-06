@@ -25,6 +25,7 @@ const StyledRoot = styled('div')({
 
 const Main = styled('div')(({ theme }) => ({
   flexGrow: 1,
+  minWidth: 0,
   overflow: 'auto',
   minHeight: '100%',
   paddingTop: APP_BAR_MOBILE + 24,
