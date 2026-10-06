@@ -1,192 +1,121 @@
 import { Helmet } from 'react-helmet-async';
-import { Grid, Typography, Box, Button } from '@mui/material';
-import React, { useEffect, useState } from 'react';
-import CircleIcon from '@mui/icons-material/Circle';
-import { MapContainer, TileLayer, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-import LoadingButton from '@mui/lab/LoadingButton';
-import { grey } from '@mui/material/colors';
+import { Alert, Box, Button, CircularProgress, IconButton, List, ListItemButton, ListItemText, Tooltip, Typography } from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
+import React, { useEffect, useRef, useState } from 'react';
+import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet';
 import { TILE, TILEAPI } from '../utils/constants';
-import { debounce } from '../utils/helper';
+import { normalizeDrivers, validPosition } from '../utils/driverLocations.mjs';
 import userStore from '../store/userStore';
 import hydrationStore from '../store/hydrationStore';
 import apiService from '../components/apiService/apiService';
-import 'leaflet.markercluster';
 
-const DefaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
-});
-
-L.Marker.prototype.options.icon = DefaultIcon;
-
-export default function MapPage({ setIsLoading }) {
+export default function MapPage() {
   const company = hydrationStore(userStore, (state) => state.company);
   const jwtToken = hydrationStore(userStore, (state) => state.jwtToken);
   const [drivers, setDrivers] = useState([]);
-  // center of the map (Company location)
-  const [center, setCenter] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [updatedAt, setUpdatedAt] = useState(null);
+  const [focus, setFocus] = useState(null);
+  const [fitRequest, setFitRequest] = useState(0);
+  const refresh = useRef(() => {});
+  const companyID = company?.companyID;
 
-  const getDriverLocations = debounce(async () => {
-    try {
-      if (company && jwtToken) {
-        const res = await apiService().get(`/Company/GetCompanyDriverLocations`, {
-          headers: {
-            Authorization: `Bearer ${jwtToken}`,
-            'Content-Type': 'application/json',
-          },
+  useEffect(() => {
+    if (!jwtToken || !companyID) return undefined;
+    let disposed = false;
+    let pending = false;
+    let timer;
+    let controller;
+    const load = async () => {
+      if (disposed || pending) return;
+      clearTimeout(timer);
+      pending = true;
+      controller = new AbortController();
+      setLoading(true);
+      try {
+        const { data } = await apiService().get('/Company/GetCompanyDriverLocations', {
+          headers: { Authorization: `Bearer ${jwtToken}` }, signal: controller.signal, timeout: 8000,
         });
-
-        if (res && res.status === 200) {
-          console.log(res.data);
-          const data = res.data;
-          // TODO: Remove this
-          data.push(
-            { driverID: 1, name: 'Example1', latitude: 40.8482, longitude: -73.9976, isWorking: true },
-            { driverID: 2, name: 'Example2', latitude: 40.8509, longitude: -73.9701, isWorking: true },
-            { driverID: 3, name: 'Example3', latitude: 42.8142, longitude: -73.9396, isWorking: true },
-            { driverID: 4, name: 'Example4', latitude: 42.8142, longitude: -73.9396, isWorking: false }
-          );
-          data.sort((a, b) => {
-            if (a.isWorking < b.isWorking) return 1;
-            if (a.isWorking > b.isWorking) return -1;
-            return 0;
-          });
-          const temp = [];
-          data.forEach((driver) => {
-            const randomColor = () => Math.floor(Math.random() * 16777215).toString(16);
-            driver = { ...driver, color: randomColor() };
-            temp.push(driver);
-          });
-          setDrivers(temp);
+        if (!disposed) {
+          setDrivers(normalizeDrivers(data)); setUpdatedAt(new Date()); setError('');
         }
+      } catch {
+        if (!disposed) setError('Driver locations could not be refreshed. Showing the last received positions.');
+      } finally {
+        pending = false;
+        if (!disposed) { setLoading(false); timer = setTimeout(load, 10000); }
       }
-    } catch (err) {
-      console.log(err);
-    }
-    setIsLoading(false);
-  }, 500);
+    };
+    setDrivers([]); setUpdatedAt(null); setError(''); setFocus(null);
+    refresh.current = load;
+    load();
+    return () => { disposed = true; clearTimeout(timer); controller?.abort(); refresh.current = () => {}; };
+  }, [companyID, jwtToken]);
 
-  useEffect(() => {
-    if (company && jwtToken) {
-      updateMap();
-    }
-  }, [company, jwtToken]);
-
-  useEffect(() => {
-    // TODO: This should be company specific // Palisades park
-    setCenter([40.8482, -73.9976]);
-  }, [company]);
-
-  const updateMap = async () => {
-    setIsLoading(true);
-    // Empty the Drivers
-    setDrivers([]);
-    getDriverLocations();
-  };
-
+  const located = drivers.filter((driver) => driver.hasPosition);
+  const center = validPosition(company) ? [company.latitude, company.longitude] : [40.75, -74];
   return (
     <>
-      <Helmet>
-        <title> Map | Hanin Taxi </title>
-      </Helmet>
-
-      <Grid container>
-        <Grid item xs={10.5} sx={{ px: 3 }}>
-          {company !== undefined ? (
-            <MapContainer style={{ width: '100%', height: '85vh' }} center={center} zoom={13} scrollWheelZoom={false}>
-              <ChangeView center={center} zoom={13} />
-              <TileLayer url={`${TILE}?${TILEAPI}`} />
-              <ColorMarkers drivers={drivers} />
+      <Helmet><title>Driver Map | Hanin Taxi</title></Helmet>
+      <Box sx={{ px: { xs: 2, md: 3 }, pb: 3, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 2 }}>
+          <Box>
+            <Typography variant="h4" component="h1">Driver Map</Typography>
+            <Typography variant="body2" color="text.secondary" role="status">
+              {located.length} located / {drivers.length} drivers
+              {updatedAt ? ` · Last fetched ${updatedAt.toLocaleTimeString('en-US')}` : ' · Waiting for locations'}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+            <Tooltip title="Show all drivers"><span><IconButton aria-label="Show all drivers" disabled={!located.length} onClick={() => { setFocus(null); setFitRequest((n) => n + 1); }}><MyLocationIcon /></IconButton></span></Tooltip>
+            <Tooltip title="Refresh driver locations"><span><IconButton aria-label="Refresh driver locations" disabled={loading} onClick={() => refresh.current()}>{loading ? <CircularProgress size={22} /> : <RefreshIcon />}</IconButton></span></Tooltip>
+          </Box>
+        </Box>
+        {error && <Alert severity="warning" sx={{ mb: 2 }} action={<Button color="inherit" size="small" disabled={loading} onClick={() => refresh.current()}>Retry</Button>}>{error}</Alert>}
+        {!loading && !error && !located.length && <Alert severity="info" sx={{ mb: 2 }}>No drivers are currently sharing a location.</Alert>}
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 240px' }, gap: 2 }}>
+          <Box role="region" aria-label="Driver locations map" sx={{ height: { xs: '52vh', md: '68vh' }, minHeight: 300, minWidth: 0, overflow: 'hidden', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+            <MapContainer center={center} zoom={12} scrollWheelZoom style={{ width: '100%', height: '100%' }}>
+              <TileLayer url={TILEAPI ? `${TILE}?${TILEAPI}` : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'} attribution={TILEAPI ? '&copy; Stadia Maps &copy; OpenMapTiles &copy; OpenStreetMap' : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'} />
+              <MapView drivers={located} focus={focus} fitRequest={fitRequest} companyID={companyID} />
+              {located.map((driver) => <CircleMarker key={driver.driverID} center={[driver.latitude, driver.longitude]} radius={9} pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#087f8c', fillOpacity: 1 }}>
+                <Popup><strong>Driver {driver.name}</strong><br />On duty</Popup>
+              </CircleMarker>)}
             </MapContainer>
-          ) : null}
-        </Grid>
-        <Grid item xs={1.5}>
-          <LoadingButton
-            fullWidth
-            color={'primary'}
-            variant="contained"
-            // loading={isLoading}
-            sx={{ color: '#FFFFFF', mb: 3 }}
-            onClick={updateMap}
-          >
-            지도 업데이트
-          </LoadingButton>
-          {drivers.map((driver, index) => (
-            <Box
-              key={index}
-              sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mr: 2, mb: 2 }}
-            >
-              {driver.isWorking ? (
-                <Button
-                  variant={'text'}
-                  sx={{ p: 0 }}
-                  onClick={() => {
-                    console.log([driver.latitude, driver.longitude]);
-                    setCenter([driver.latitude, driver.longitude]);
-                  }}
-                >
-                  <Typography color={grey[900]} align="left">
-                    {driver.name}
-                  </Typography>
-                </Button>
-              ) : (
-                <Typography color={grey[400]} align="left">
-                  {driver.name}
-                </Typography>
-              )}
-
-              {driver.isWorking ? <CircleIcon sx={{ color: `#${driver.color}` }} /> : null}
-            </Box>
-          ))}
-        </Grid>
-      </Grid>
+          </Box>
+          <Box component="aside" sx={{ minWidth: 0 }} aria-label="Drivers">
+            <Typography variant="subtitle1" component="h2">Fleet</Typography>
+            <List dense disablePadding sx={{ maxHeight: { xs: 240, md: '60vh' }, overflowY: 'auto' }}>
+              {drivers.map((driver) => <ListItemButton key={driver.driverID} disabled={!driver.hasPosition} selected={focus?.driverID === driver.driverID} onClick={() => setFocus({ ...driver })} aria-label={`Locate driver ${driver.name}`} sx={{ px: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <ListItemText primary={`Driver ${driver.name}`} secondary={driver.hasPosition ? 'On duty' : driver.isWorking ? 'Location unavailable' : 'Off duty'} primaryTypographyProps={{ sx: { overflowWrap: 'anywhere' } }} />
+              </ListItemButton>)}
+            </List>
+          </Box>
+        </Box>
+      </Box>
     </>
   );
 }
 
-const ColorMarkers = ({ drivers }) => {
+function MapView({ drivers, focus, fitRequest, companyID }) {
   const map = useMap();
+  const fitted = useRef(false);
+  useEffect(() => { fitted.current = false; }, [companyID, fitRequest]);
   useEffect(() => {
-    if (!map) return;
-
-    const colorMarker = () => {
-      const markers = L.markerClusterGroup();
-
-      removeMarkers();
-
-      drivers.forEach((driver) => {
-        if (!driver.isWorking) return;
-        const icon = new L.DivIcon({
-          className: 'custom-icon-marker',
-          iconSize: L.point(40, 40),
-          html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="marker"><path fill-opacity="0.25" d="M16 32s1.427-9.585 3.761-12.025c4.595-4.805 8.685-.99 8.685-.99s4.044 3.964-.526 8.743C25.514 30.245 16 32 16 32z"/><path stroke="#fff" fill="#${driver.color}" d="M15.938 32S6 17.938 6 11.938C6 .125 15.938 0 15.938 0S26 .125 26 11.875C26 18.062 15.938 32 15.938 32zM16 6a4 4 0 100 8 4 4 0 000-8z"/></svg>`,
-          iconAnchor: [12, 24],
-          popupAnchor: [9, -26],
-        });
-
-        const marker = L.marker([driver.latitude, driver.longitude], { icon }).bindPopup(`${driver.name}`);
-        markers.addLayer(marker);
-      });
-      map.addLayer(markers);
-    };
-    function removeMarkers() {
-      map.eachLayer((layer) => {
-        if (layer instanceof L.MarkerClusterGroup) {
-          map.removeLayer(layer);
-        }
-      });
+    if (!fitted.current && drivers.length) {
+      map.fitBounds(drivers.map((driver) => [driver.latitude, driver.longitude]), { padding: [35, 35], maxZoom: 14 });
+      fitted.current = true;
     }
-
-    colorMarker();
-  }, [map, drivers]);
+  }, [map, drivers, fitRequest]);
+  useEffect(() => {
+    if (focus) map.setView([focus.latitude, focus.longitude], 16);
+  }, [map, focus]);
+  useEffect(() => {
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
   return null;
-};
-
-const ChangeView = ({ center, zoom }) => {
-  const map = useMap();
-  map.setView(center, zoom);
-  return null;
-};
+}
