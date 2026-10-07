@@ -75,7 +75,7 @@ namespace KoreanTaxi.Managers
         public async Task<DriverQueue> ReAddDriverToQueue(long driverID)
         {
             var prevQueue = await ctx.DriverQueues.Where(x => x.DriverID == driverID).FirstOrDefaultAsync();
-            RemoveFromQueue(driverID);
+            await RemoveFromQueue(driverID);
             var driverQueue = await AddDriverToQueue(driverID, new LatLng(prevQueue.Latitude, prevQueue.Longitude));
             return driverQueue;
         }

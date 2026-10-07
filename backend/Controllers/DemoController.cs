@@ -13,7 +13,7 @@ public class DemoController(IConfiguration configuration, CompanyDispatchService
     public IActionResult Status()
     {
         if (!configuration.GetValue<bool>("DemoMode")) return NotFound();
-        return Ok(new { demoMode = true, persistence = "in-memory", externalPayments = false });
+        return Ok(new { demoMode = true, persistence = configuration.GetValue<bool>("Demo:Postgres") ? "postgresql-demo" : "in-memory", externalPayments = false });
     }
 
     [HttpPost("RunDispatch")]

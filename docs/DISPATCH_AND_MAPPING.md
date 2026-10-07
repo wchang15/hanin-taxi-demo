@@ -48,11 +48,17 @@ no-match cursor behavior, pre-save failure recovery, cancellation, shared endpoi
 and overlapping matching invocations. The concurrency test pauses a save while other
 calls enter, then checks unique driver/customer offers; it does not rely on lucky timing.
 
-**Production boundary:** the lock covers these two automatic matching entry points in
-one process only. Other queue mutations, crash recovery, multi-instance workers, and
-relational uniqueness/transactions are not established by these tests. A PostgreSQL
-cursor migration, conditional assignment and transactional locking, plus an outbox
-for notifications, would be needed and tested before production deployment.
+The optional [PostgreSQL verification mode](POSTGRES_DISPATCH.md) additionally wraps
+matching and controller state transitions in transactions sharing a database advisory
+lock. Its two-process harness checks concurrent offers, both accept/cancel orderings,
+decline, duplicate acceptance, DB uniqueness, rollback and restart/crash recovery.
+That mode persists the cursor across API restarts. The default InMemory behavior
+described above is unchanged.
+
+**Production boundary:** the global lock is intentionally conservative, not a
+fleet-scale throughput design. Fresh-schema verification is not an incremental
+production migration. Notifications still need an outbox/backplane, and broader
+authorization, load and availability guarantees remain unverified.
 
 ## What Currently Refreshes, and When?
 

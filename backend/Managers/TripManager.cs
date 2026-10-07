@@ -443,6 +443,7 @@ namespace KoreanTaxi.Managers
         {
             var customerQueue = await ctx.CustomerQueues.Where(x => customerID == x.CustomerID).FirstOrDefaultAsync();
             if (customerQueue == null) { return null; }
+            await ReleasePendingOffer(customerQueue.TripID);
             ctx.CustomerQueues.Remove(customerQueue);
             await ctx.SaveChangesAsync();
 
@@ -454,10 +455,22 @@ namespace KoreanTaxi.Managers
         {
             var customerQueue = await ctx.CustomerQueues.Where(x => x.TripID == tripID).FirstOrDefaultAsync();
             if (customerQueue == null) { return null; }
+            await ReleasePendingOffer(customerQueue.TripID);
             ctx.CustomerQueues.Remove(customerQueue);
             await ctx.SaveChangesAsync();
 
             return customerQueue;
+        }
+
+        private async Task ReleasePendingOffer(long tripID)
+        {
+            var pending = await ctx.DriverQueues.Where(x => x.TripID == tripID && x.QueueStatus == EnumQueueStatus.PENDING).ToListAsync();
+            foreach (var driver in pending)
+            {
+                driver.QueueStatus = EnumQueueStatus.WAITING;
+                driver.TripID = null;
+                driver.CustomerQueueID = null;
+            }
         }
 
         public bool IsAddressCity(string address, string city)

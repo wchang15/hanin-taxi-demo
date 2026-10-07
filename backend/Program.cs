@@ -18,6 +18,7 @@ Console.WriteLine("HaninTaxi process entered Program.cs.");
 var builder = WebApplication.CreateBuilder(args);
 Console.WriteLine("WebApplication builder created.");
 var demoMode = builder.Configuration.GetValue<bool>("DemoMode");
+var postgresDemo = builder.Configuration.GetValue<bool>("Demo:Postgres");
 if (!demoMode)
 {
     throw new InvalidOperationException("This portfolio snapshot only runs with DemoMode=true. It is not a production deployment.");
@@ -34,7 +35,9 @@ Console.WriteLine($"HaninTaxi backend starting. DemoMode={demoMode}");
 var conn = builder.Configuration.GetConnectionString("defaultString");
 
 //builder.Services.AddControllers();
-builder.Services.AddControllers().AddJsonOptions(x => x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
+builder.Services.AddScoped<DemoDatabaseTransactionFilter>();
+builder.Services.AddControllers(options => options.Filters.AddService<DemoDatabaseTransactionFilter>())
+    .AddJsonOptions(x => x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 
 builder.Services.AddScoped<IUserService, UserService>();
@@ -118,15 +121,16 @@ builder.Services.AddCors(options => options.AddPolicy(name: "corsapp", policy =>
     policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
 }));
 
-if (demoMode)
+builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
+if (!postgresDemo)
 {
     Console.WriteLine("Using in-memory demo database.");
-    builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
     builder.Services.AddDbContext<TaxiDbContext>(options => options.UseInMemoryDatabase("HaninTaxiDemo"));
 }
 else
 {
-    Console.WriteLine("Using PostgreSQL database.");
+    conn = DemoDatabase.Validate(builder.Configuration.GetConnectionString("DemoPostgres"));
+    Console.WriteLine("Using isolated PostgreSQL demo database. Real integrations remain disabled.");
     builder.Services.AddDbContext<TaxiDbContext>(options => options.UseNpgsql(conn).UseLowerCaseNamingConvention());
 }
 
@@ -148,7 +152,25 @@ if (demoMode)
 {
     using var demoScope = app.Services.CreateScope();
     var demoContext = demoScope.ServiceProvider.GetRequiredService<TaxiDbContext>();
-    SeedDemoData(demoContext);
+    if (postgresDemo)
+    {
+        await demoContext.Database.OpenConnectionAsync();
+        try
+        {
+            // Serialize fresh-schema setup and seed across simultaneous startups.
+            await demoContext.Database.ExecuteSqlRawAsync("SELECT pg_advisory_lock(726104032)");
+            await demoContext.Database.EnsureCreatedAsync();
+            await using var transaction = await DispatchTransaction.BeginAsync(demoContext, CancellationToken.None);
+            SeedDemoData(demoContext);
+            await transaction!.CommitAsync();
+        }
+        finally
+        {
+            await demoContext.Database.ExecuteSqlRawAsync("SELECT pg_advisory_unlock(726104032)");
+            await demoContext.Database.CloseConnectionAsync();
+        }
+    }
+    else SeedDemoData(demoContext);
 }
 
 // Configure the HTTP request pipeline.

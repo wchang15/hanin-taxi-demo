@@ -32,6 +32,7 @@ entire public snapshot. See [verification scope](docs/VALIDATION.md).
 | Engineering question                        | Implementation                                                                                                             | Evidence                                                                                                                          |
 | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | How do company turns stay fair?            | [CompanyDispatchService](backend/Services/CompanyDispatchService.cs)                                                     | [21 queue, failure, and concurrent-invocation cases](tests/HaninTaxi.Tests/CompanyDispatchTests.cs)                                |
+| What if two API instances compete? | [Shared database transaction](backend/Services/DispatchTransaction.cs) | [Real PostgreSQL, two-process checks](docs/POSTGRES_DISPATCH.md) |
 | Which driver is eligible for a request?     | [DispatchScoringService](backend/Services/DispatchScoringService.cs)                                                       | [24 dispatch tests](tests/HaninTaxi.Tests/DispatchScoringTests.cs)                                                                |
 | What if an old route arrives after a reset? | [TripController](rider-app/lib/controllers/trip_controller.dart)                                                           | [Delayed-response regression tests](rider-app/test/trip_route_request_test.dart)                                                  |
 | How does a route avoid map controls?        | [Camera fitting](rider-app/lib/utils/route_camera.dart)                                                                    | [Viewport and inset tests](rider-app/test/route_camera_test.dart)                                                                 |
@@ -137,6 +138,9 @@ npm run test:e2e
 ```
 
 [GitHub Actions configuration](.github/workflows/ci.yml) repeats these checks.
+The optional [PostgreSQL harness](docs/POSTGRES_DISPATCH.md) creates a disposable
+database and checks two API processes, concurrent offers, accept/cancel races,
+duplicate acceptance, rollback, restart and crash recovery. It has a separate CI job.
 The browser suite builds the actual operator app and starts a separate in-memory
 API on port 5796 and frontend on port 4196. It refuses to reuse existing servers.
 A workflow definition is not a claim that a remote run has passed. Local results

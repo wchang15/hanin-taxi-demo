@@ -179,8 +179,8 @@ namespace KoreanTaxi.Data
                 .HasFilter("DriverID is not null")
                 .IsUnique();
                 a.HasIndex(x => x.QueueStatus);
-                a.HasIndex(x => x.TripID);
-                a.HasIndex(x => x.CustomerQueueID);
+                a.HasIndex(x => x.TripID).IsUnique();
+                a.HasIndex(x => x.CustomerQueueID).IsUnique();
             });
 
             modelBuilder.Entity<DriverQueueRejectedCustomerQueue>(a =>

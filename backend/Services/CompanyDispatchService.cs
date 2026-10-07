@@ -11,8 +11,8 @@ public record DispatchOffer(long CompanyID, long DriverID, long DriverQueueID,
 
 public record DispatchAttempt(int WaitingDrivers, int WaitingCustomers, DispatchOffer? Offer);
 
-// Both matching entry points share this singleton in the single-process demo.
-// This is not a distributed lock or a substitute for relational transactions.
+// In-memory calls share a process gate; PostgreSQL also coordinates all instances
+// through the same transaction-scoped advisory lock used by API mutations.
 public sealed class CompanyDispatchService(IServiceScopeFactory scopeFactory, TimeProvider clock) : IDisposable
 {
     private readonly SemaphoreSlim gate = new(1, 1);
@@ -25,6 +25,7 @@ public sealed class CompanyDispatchService(IServiceScopeFactory scopeFactory, Ti
             // Read after acquiring the gate in a fresh context, never a stale queue snapshot.
             await using var scope = scopeFactory.CreateAsyncScope();
             var ctx = scope.ServiceProvider.GetRequiredService<TaxiDbContext>();
+            await using var transaction = await DispatchTransaction.BeginAsync(ctx, cancellationToken);
             var scoring = scope.ServiceProvider.GetRequiredService<IDispatchScoringService>();
             var drivers = await ctx.DriverQueues
                 .Include(x => x.DriverQueueRejectedCustomerQueues)
@@ -72,6 +73,7 @@ public sealed class CompanyDispatchService(IServiceScopeFactory scopeFactory, Ti
                     }
                     cursor.LastCompanyID = company.Key;
                     await ctx.SaveChangesAsync(cancellationToken);
+                    if (transaction != null) await transaction.CommitAsync(cancellationToken);
 
                     candidate.Score.Reasons.Insert(0, "Company rotation, then earliest eligible driver in that company's queue.");
                     return new(drivers.Count, customers.Count, new(company.Key, driver.DriverID,

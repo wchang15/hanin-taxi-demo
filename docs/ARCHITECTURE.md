@@ -19,9 +19,10 @@ flowchart LR
     Hub --> Operator
 ```
 
-The demo uses EF Core InMemory with synthetic accounts. PostgreSQL models and
-legacy migrations are retained for review, but a PostgreSQL migration is not part
-of the validated .NET 10 demo path.
+The default demo uses EF Core InMemory with synthetic accounts. The optional
+[PostgreSQL test path](POSTGRES_DISPATCH.md) validates two API processes against
+a fresh synthetic schema. Legacy migrations are retained for review, but incremental
+migration of an existing database is not part of the validated path.
 
 ## 1. Eligibility Before Ranking
 
@@ -46,10 +47,11 @@ not a learned model or a statement of current transport regulations.
 The [matching worker](../backend/Managers/BackgroundManager.cs) and demo endpoint
 share [CompanyDispatchService](../backend/Services/CompanyDispatchService.cs).
 It rotates companies, preserves their eligible driver queue order, then scores
-customers for that driver. An in-memory database cursor advances only on a saved
-offer. Matching calls are serialized within one API process, with a fresh queue
-snapshot inside the lock. This is a fairness policy, not a fleet-wide pickup-time
-optimization or multi-instance assignment guarantee. See the
+customers for that driver. The cursor advances only on a saved offer. InMemory
+matching calls are serialized within one API process. PostgreSQL matching and API
+state transitions share a transaction-scoped advisory lock, read fresh state after
+locking, and commit queues/cursor together. A two-process harness verifies specific
+concurrency and recovery cases, not fleet-scale performance or availability. See the
 [policy and exception rules](DISPATCH_AND_MAPPING.md#executable-company-rotation).
 
 ## 2. One Quote, Separate Payment State
