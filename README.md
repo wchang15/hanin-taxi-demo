@@ -7,7 +7,7 @@ local demonstration. Flutter clients share trip state with an ASP.NET Core API
 and a React operator dashboard.
 
 [Product case study](https://www.woochangchang.com/hanin-taxi.html) |
-[45-second narrated demo](https://www.woochangchang.com/hanin-taxi.html#demo) |
+[Narrated workflow demo](https://www.woochangchang.com/hanin-taxi.html#demo) |
 [Architecture](docs/ARCHITECTURE.md) |
 [Dispatch and mapping decisions](docs/DISPATCH_AND_MAPPING.md) |
 [Contribution scope](docs/CONTRIBUTIONS.md) |

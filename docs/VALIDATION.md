@@ -80,7 +80,7 @@ browser captures of synthetic data. The map preserves the viewport while polling
 
 ## Narrated Workflow Capture
 
-The [45-second demo](https://www.woochangchang.com/hanin-taxi.html#demo) uses actual
+The [narrated demo](https://www.woochangchang.com/hanin-taxi.html#demo) uses actual
 restored-client screens and synthetic records. Driver pickup confirmation and
 completion were recaptured against reviewed API revision `4b43179` after replacing
 an outdated local backend. The actual driver UI now shows the same `$44.07` cash
