@@ -3,23 +3,29 @@ using KoreanTaxi.Models.Enums;
 using KoreanTaxi.Models.NonDBModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using KoreanTaxi.Services;
 
 namespace KoreanTaxi.Hubs
 {
-    public class TaxiHub : Hub
+    [Authorize]
+    public class TaxiHub(HubGroupAuthorization authorization) : Hub
     {
-        //Not being used
-        public Task SendMessage(string connectionID, string trip)
+        public override async Task OnConnectedAsync()
         {
-
-            //await Clients.Client(connectionId: connectionID).SendAsync("Taxi", trip);
-            return Clients.All.SendAsync("Taxi", trip);
+            if (await authorization.ResolveAsync(Context.User, Context.ConnectionAborted) == null)
+            {
+                Context.Abort();
+                return;
+            }
+            await base.OnConnectedAsync();
         }
 
-        //[Authorize(Roles = nameof(EnumUserRole.CUSTOMER) + ", " + nameof(EnumUserRole.DRIVER) + ", " + nameof(EnumUserRole.COMPANY))]
         public async Task AddToGroup(string groupName)
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+            var allowed = await authorization.ResolveAsync(Context.User, Context.ConnectionAborted);
+            if (allowed == null || !string.Equals(groupName, allowed, StringComparison.Ordinal))
+                throw new HubException("This account cannot subscribe to that channel.");
+            await Groups.AddToGroupAsync(Context.ConnectionId, allowed, Context.ConnectionAborted);
         }
     }
 }

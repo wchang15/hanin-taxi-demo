@@ -112,3 +112,24 @@ builds the app, launches its own synthetic API, and checks desktop/mobile login,
 dispatch navigation, reload, and failure recovery. It does not mock successful API responses.
 
 ![Actual desktop operator new-call form with synthetic data](images/operator-desktop.png)
+
+## 7. Realtime Identity and Commit Ordering
+
+[TaxiHub](../backend/Hubs/TaxiHub.cs) requires JWT authentication.
+[HubGroupAuthorization](../backend/Services/HubGroupAuthorization.cs) resolves
+the active login's role and profile from the database; clients may subscribe only
+to that rider, driver or company channel. The server exposes no client broadcast
+method. Browser query tokens are accepted on `/Taxi` only, not REST endpoints.
+Clients supply their current token on connection and stop the connection on logout.
+
+In PostgreSQL mode, [DeferredHubNotifications](../backend/Services/DeferredHubNotifications.cs)
+holds controller notifications until the transaction commits. Failed actions or
+commit failures discard them. Payloads are snapshotted when queued; later object
+mutation cannot change the queued message. Delivery failures are logged after
+commit, not reported as a failed database command. The default InMemory path
+still delivers immediately because it has no relational transaction.
+
+The [integration harness](../tests/HaninTaxi.PostgresChecks/Program.cs) uses real
+SignalR connections and a commit-time PostgreSQL fault. This establishes selected
+authorization and ordering behavior, not guaranteed delivery: there is no durable
+outbox or multi-server SignalR backplane, and clients must recover missed state.

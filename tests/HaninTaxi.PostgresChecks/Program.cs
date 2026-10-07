@@ -14,6 +14,9 @@ using KoreanTaxi.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR.Client;
+using System.Collections.Concurrent;
 
 var root = Path.GetFullPath(args.SingleOrDefault() ?? ".");
 var dll = Path.Combine(root, "backend/bin/Release/net10.0/KoreanTaxi.dll");
@@ -148,7 +151,9 @@ try
         catch (DbUpdateException error) when (error.InnerException is PostgresException { SqlState: "23505" })
         { Check(true, $"Database rejects a duplicate {column} offer even outside the API lock"); }
     }
-    Console.WriteLine($"PostgreSQL integration: {passed} checks passed; two API processes, synthetic data only.");
+    fixture = await Reset();
+    await RealtimeChecks(a, fixture);
+    Console.WriteLine($"PostgreSQL and realtime integration: {passed} checks passed; two API processes, synthetic data only.");
 }
 finally
 {
@@ -189,11 +194,106 @@ static async Task Sql(string connectionString, string sql)
 }
 HttpRequestMessage Request(string path, long loginID, string role)
 {
+    var request = new HttpRequestMessage(HttpMethod.Post, path);
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Token(loginID, role));
+    return request;
+}
+string Token(long loginID, string role)
+{
     var jwt = new JwtSecurityToken(claims: [new Claim(ClaimTypes.UserData, loginID.ToString()), new Claim(ClaimTypes.Role, role)],
         expires: DateTime.UtcNow.AddMinutes(10), signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)), SecurityAlgorithms.HmacSha512));
-    var request = new HttpRequestMessage(HttpMethod.Post, path);
-    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", new JwtSecurityTokenHandler().WriteToken(jwt));
-    return request;
+    return new JwtSecurityTokenHandler().WriteToken(jwt);
+}
+async Task RealtimeChecks(Api api, Fixture fixture)
+{
+    Check((await api.Client.PostAsync("Taxi/negotiate?negotiateVersion=1", null)).StatusCode == HttpStatusCode.Unauthorized,
+        "Anonymous realtime negotiation is denied");
+    Check((await api.Client.PostAsync("Taxi/negotiate?negotiateVersion=1&access_token=invalid", null)).StatusCode == HttpStatusCode.Unauthorized,
+        "Invalid realtime token is denied");
+    Check((await api.Client.GetAsync("api/Company/Trips?access_token=" + Token(fixture.CompanyLogin, "COMPANY"))).StatusCode == HttpStatusCode.Unauthorized,
+        "Query-string tokens are accepted only on the hub path, not REST endpoints");
+    long driverID, companyID, riderID, riderLogin, otherCompanyLogin;
+    await using (var db = Context())
+    {
+        driverID = (await db.Drivers.SingleAsync(x => x.LoginUserID == fixture.DriverLogin)).DriverID;
+        companyID = (await db.CompanyUsers.SingleAsync(x => x.LoginUserID == fixture.CompanyLogin)).CompanyID;
+        var customerUser = new LoginUser { Username = "realtime-rider", Role = EnumUserRole.CUSTOMER };
+        var otherUser = new LoginUser { Username = "other-company", Role = EnumUserRole.COMPANY };
+        db.LoginUsers.AddRange(customerUser, otherUser);
+        await db.SaveChangesAsync();
+        riderLogin = customerUser.LoginUserID;
+        otherCompanyLogin = otherUser.LoginUserID;
+        var customer = new Customer { LoginUserID = riderLogin, FirstName = "Synthetic", LastName = "Rider", PhoneNumber = "2015550109", StripeCustomerID = "synthetic" };
+        db.Customers.Add(customer);
+        db.CompanyUsers.Add(new CompanyUser { LoginUserID = otherCompanyLogin, CompanyID = await db.Companies.Where(x => x.CompanyID != companyID).Select(x => x.CompanyID).FirstAsync(), Name = "Other operator" });
+        await db.SaveChangesAsync();
+        riderID = customer.CustomerID;
+    }
+    HubConnection Connection(long login, string role, bool query = false) => new HubConnectionBuilder()
+        .WithUrl(new Uri(api.Client.BaseAddress!, query ? "Taxi?access_token=" + Token(login, role) : "Taxi"),
+            options => { if (!query) options.AccessTokenProvider = () => Task.FromResult<string?>(Token(login, role)); })
+        .Build();
+    await using var driverHub = Connection(fixture.DriverLogin, "DRIVER");
+    await driverHub.StartAsync();
+    await driverHub.InvokeAsync("AddToGroup", "driver" + driverID);
+    Check(true, "Authenticated driver can subscribe to its own channel");
+    await Denied(driverHub, "driver" + (driverID + 999));
+    await Denied(driverHub, "company" + companyID);
+    await using (var rider = Connection(riderLogin, "CUSTOMER"))
+    {
+        await rider.StartAsync();
+        await rider.InvokeAsync("AddToGroup", "customer" + riderID);
+        Check(true, "Authenticated rider can subscribe to its own channel");
+        await Denied(rider, "customer" + (riderID + 999));
+    }
+    await using (var company = Connection(fixture.CompanyLogin, "COMPANY", query: true))
+    {
+        await company.StartAsync();
+        await company.InvokeAsync("AddToGroup", "company" + companyID);
+        Check(true, "Browser-style query token authenticates the operator hub channel");
+        await Denied(company, "company" + (companyID + 999));
+        try { await company.InvokeAsync("SendMessage", "any", "forged broadcast"); throw new Exception("Broadcast unexpectedly available"); }
+        catch (HubException) { Check(true, "Client-controlled broadcast method is not exposed"); }
+    }
+    var tripID = (await Match(api))["tripID"]!.GetValue<long>();
+    using (var accept = Request("api/DriverQueue/MatchTrip", fixture.DriverLogin, "DRIVER"))
+        Check((await api.Client.SendAsync(accept)).IsSuccessStatusCode, "Authenticated driver accepts the test offer");
+    foreach (var command in new[] { $"UpdateTripNote?tripID={tripID}&notes=foreign", $"UpdateTripPrice?tripID={tripID}&price=1", $"CancelTrip?tripID={tripID}" })
+    {
+        using var request = Request("api/Company/" + command, otherCompanyLogin, "COMPANY");
+        Check((await api.Client.SendAsync(request)).StatusCode == HttpStatusCode.NotFound, "Cross-company trip mutation denied: " + command.Split('?')[0]);
+    }
+    var seen = new ConcurrentQueue<string>();
+    var delivered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+    using var subscription = driverHub.On<string, long>("noteupdate", async (note, id) =>
+    {
+        seen.Enqueue(note);
+        if (note == "committed-note")
+        {
+            await using var db = Context();
+            delivered.TrySetResult((await db.Trips.FindAsync(id))?.Notes == note);
+        }
+    });
+    await Sql(connectionString, """
+        CREATE FUNCTION fail_note_commit() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN RAISE EXCEPTION 'injected commit failure'; END $$;
+        CREATE CONSTRAINT TRIGGER fail_note_commit AFTER UPDATE ON trips
+        DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (NEW.notes = 'rolled-back-note')
+        EXECUTE FUNCTION fail_note_commit();
+        """);
+    using (var fail = Request($"api/Company/UpdateTripNote?tripID={tripID}&notes=rolled-back-note", fixture.CompanyLogin, "COMPANY"))
+        Check((await api.Client.SendAsync(fail)).StatusCode == HttpStatusCode.InternalServerError, "Commit-time failure rolls back the notification-producing command");
+    await Sql(connectionString, "DROP TRIGGER fail_note_commit ON trips; DROP FUNCTION fail_note_commit()");
+    using (var success = Request($"api/Company/UpdateTripNote?tripID={tripID}&notes=committed-note", fixture.CompanyLogin, "COMPANY"))
+        Check((await api.Client.SendAsync(success)).IsSuccessStatusCode, "Committed notification-producing command succeeds");
+    Check(await delivered.Task.WaitAsync(TimeSpan.FromSeconds(5)), "WebSocket receives the note only after the database reflects its committed value");
+    Check(!seen.Contains("rolled-back-note"), "Rolled-back update never reaches the driver WebSocket");
+
+    async Task Denied(HubConnection connection, string group)
+    {
+        try { await connection.InvokeAsync("AddToGroup", group); throw new Exception("Unexpected group access: " + group); }
+        catch (HubException) { Check(true, "Foreign channel subscription rejected: " + group); }
+    }
 }
 static async Task<JsonObject> Match(Api api)
 {

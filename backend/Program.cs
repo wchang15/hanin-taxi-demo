@@ -36,6 +36,8 @@ var conn = builder.Configuration.GetConnectionString("defaultString");
 
 //builder.Services.AddControllers();
 builder.Services.AddScoped<DemoDatabaseTransactionFilter>();
+builder.Services.AddScoped<DeferredHubNotifications>();
+builder.Services.AddScoped<HubGroupAuthorization>();
 builder.Services.AddControllers(options => options.Filters.AddService<DemoDatabaseTransactionFilter>())
     .AddJsonOptions(x => x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -95,6 +97,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSigningKey)),
             ValidateIssuer = false,
             ValidateAudience = false
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/Taxi") &&
+                    string.IsNullOrEmpty(context.Request.Headers.Authorization))
+                    context.Token = context.Request.Query["access_token"];
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -198,7 +210,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapHub<TaxiHub>("/Taxi");
+app.MapHub<TaxiHub>("/Taxi", options => options.CloseOnAuthenticationExpiration = true);
 
 if (!demoMode)
 {

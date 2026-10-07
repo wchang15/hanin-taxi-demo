@@ -121,18 +121,21 @@ export default function TaxiPage({ setIsLoading, setSnackBarMessage, toast }) {
   }, [isHubConnected]);
 
   useEffect(() => {
-    if (company && jwtToken) {
-      getTrips();
-      if (!isHubConnected) {
-        try {
-          initSignalR();
-          initHub(true);
-        } catch (err) {
-          toast.error(err.message);
-        }
-      }
-    }
-  }, [company, isHubConnected]);
+    if (!company || !jwtToken) return undefined;
+    let disposed = false;
+    getTrips();
+    initSignalR().then(() => {
+      if (disposed) hubConnection?.stop();
+      else initHub(true);
+    }).catch((err) => {
+      if (!disposed) toast.error(err.message);
+    });
+    return () => {
+      disposed = true;
+      hubConnection?.stop();
+      initHub(false);
+    };
+  }, [company?.companyID, jwtToken]);
 
   const queueHandleCall = (trip, tripID) => {
     console.log('enqueue', new Date().getTime(), trip);
@@ -145,6 +148,7 @@ export default function TaxiPage({ setIsLoading, setSnackBarMessage, toast }) {
   const initSignalR = async () => {
     hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(HUBADDRESS, {
+        accessTokenFactory: () => userStore.getState().jwtToken || '',
         skipNegotiation: true,
         timeout: 600000,
         transport: signalR.HttpTransportType.WebSockets,
@@ -165,11 +169,9 @@ export default function TaxiPage({ setIsLoading, setSnackBarMessage, toast }) {
     hubConnection.keepAliveIntervalInMilliseconds = 1000 * 60 * 5;
     hubConnection.serverTimeoutInMilliseconds = 1000 * 60 * 10;
 
-    // if the connection fail -> start it again
-    hubConnection.onclose(({ error }) => {
+    hubConnection.onclose(() => {
       console.log('onClose Hub');
       initHub(false);
-      hubConnection.start().then(() => addToGroup());
     });
 
     hubConnection.on(COMPANYTRIP, (stage, trip) => {
@@ -213,22 +215,25 @@ export default function TaxiPage({ setIsLoading, setSnackBarMessage, toast }) {
       queueHandleCall(updateTrip, trip.tripID);
     });
 
-    hubConnection.onreconnected(({ connectionId }) => {
-      console.log('Hub Reconnected');
-      addToGroup();
+    hubConnection.onreconnected(async () => {
+      try {
+        await addToGroup();
+        initHub(true);
+      } catch (err) {
+        initHub(false);
+        toast.error(err.message);
+      }
     });
 
-    hubConnection.onreconnecting(({ error }) => {
-      console.log('hub reconnecting $error');
-    });
+    hubConnection.onreconnecting(() => initHub(false));
 
     await hubConnection.start();
-    addToGroup();
+    await addToGroup();
   };
 
   const addToGroup = () => {
     console.log(`company${company.companyID}`);
-    hubConnection.invoke('AddToGroup', `company${company.companyID}`);
+    return hubConnection.invoke('AddToGroup', `company${company.companyID}`);
   };
 
   const DeleteAllArrival = async () => {

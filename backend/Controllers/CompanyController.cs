@@ -118,7 +118,7 @@ namespace KoreanTaxi.Controllers
             if (company == null) return NotFound("The Company information not found.");
 
             var trip = await tripManager.GetTripByID(tripID);
-            if (trip == null) return NotFound("Trip Not Found");
+            if (trip == null || trip.CompanyID != company.CompanyID) return NotFound("Trip Not Found");
 
             trip.Notes = notes;
             await ctx.SaveChangesAsync();
@@ -140,7 +140,7 @@ namespace KoreanTaxi.Controllers
             if (company == null) return NotFound("The Company information not found.");
 
             var trip = await tripManager.GetTripByID(tripID);
-            if (trip == null) return NotFound("Trip Not Found");
+            if (trip == null || trip.CompanyID != company.CompanyID) return NotFound("Trip Not Found");
 
             trip.CompanyTripAmount = price;
             await ctx.SaveChangesAsync();
@@ -182,7 +182,7 @@ namespace KoreanTaxi.Controllers
             if (company == null) return NotFound("The Company information not found.");
 
             var trip = await tripManager.GetTripByID(tripID);
-            if (trip == null) return NotFound("Trip Not Found");
+            if (trip == null || trip.CompanyID != company.CompanyID) return NotFound("Trip Not Found");
 
             if (trip.TripStatus == EnumTripStatus.COMPLETED)
             {

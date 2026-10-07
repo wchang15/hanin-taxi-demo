@@ -20,7 +20,7 @@ dotnet run --project tests/HaninTaxi.PostgresChecks --configuration Release -- "
 The harness creates a randomly named `hanin_demo_checks_*` database, starts two
 independent API OS processes on ephemeral loopback ports, and removes only its own
 database in `finally`. Both processes share one randomly generated JWT signing key.
-Test JWTs represent synthetic driver/company identities; this suite does not test
+Test JWTs represent synthetic rider/driver/company identities; this suite does not test
 the password/login workflow. The usual isolated API suite covers that separately.
 An interrupted harness can leave a `hanin_demo_checks_*` database for manual cleanup.
 
@@ -48,7 +48,7 @@ The `postgres-dispatch` GitHub Actions job runs the same harness against a Postg
   does not imply PostgreSQL immediately detects a disconnected client; the failure
   test waits for bounded cleanup before asserting rollback and recovery.
 
-## Twenty Assertions
+## Thirty-Nine Assertions
 
 The executable checks simultaneous API startup; `A1 -> B1 -> A2 -> B2`; 16 concurrent
 dispatch requests with four unique offers; persisted queue order; an injected DB
@@ -58,6 +58,18 @@ accept/cancel; removal of pending offers on cancellation; cross-instance decline
 atomic decline history/state; duplicate acceptance; and both unique constraints.
 Database lock barriers make acceptance/cancellation race ordering deterministic.
 No test relies only on two services inside the same process.
+
+The original 20 dispatch assertions are followed by 19 realtime and ownership
+checks. Real SignalR clients verify authenticated rider, driver and operator groups,
+rejection of foreign groups and anonymous/invalid tokens, hub-only query tokens,
+and removal of client-controlled broadcasting. Another company's operator cannot
+change trip notes/prices or cancel the trip.
+
+A deferred PostgreSQL constraint trigger deliberately fails **at commit**, after
+the action's `SaveChanges` and notification enqueue. The driver's actual WebSocket
+must not receive that rolled-back note. A subsequent successful update provides
+a delivery barrier: its handler reads the committed note directly from PostgreSQL.
+This checks post-commit delivery on one instance, not a cross-instance backplane.
 
 ## Deliberate Limits
 
@@ -74,8 +86,11 @@ and a database name starting `hanin_demo_`. External charging and messaging rema
 disabled by demo mode. The app never drops a database; only the test harness drops
 the random one it creates.
 
-SignalR delivery still lacks an outbox/backplane: notifications can precede the final
-database commit, and cross-instance subscriber delivery is not established. Full
+Controller notifications now buffer in the request scope until successful database
+commit; failures discard them. Delivery failure after commit is logged without
+turning the committed command into an HTTP error. This is **not a durable outbox**:
+a process crash after commit can still lose the event. Cross-instance subscriber
+delivery is not established; a backplane remains necessary. Full
 authorization review, production migrations, real payments, load/failover tests and
 all possible legacy state transitions remain separate work. Advisory locks protect
 participating writers, not arbitrary SQL or new code that ignores the boundary.

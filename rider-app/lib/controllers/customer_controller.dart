@@ -7,6 +7,7 @@ import 'package:tax_app/models/user_location.dart';
 import '../models/customer.dart';
 import '../models/user_login.dart';
 import '../services/login_service.dart';
+import '../services/hub_service.dart';
 import '../utils/constants.dart';
 import '../utils/secure_storage.dart';
 import '../utils/terms.dart';
@@ -146,11 +147,18 @@ class CustomerController extends GetxController {
 
     try {
       await LoginServices.postLogout();
-      customer.value = null;
-      refresh();
     } catch (e) {
     } finally {
-      isLoading(false);
+      customer.value = null;
+      try {
+        await Future.wait([
+          StorageService.deleteAllSecureData(),
+          HubService.stop(),
+        ]);
+      } finally {
+        refresh();
+        isLoading(false);
+      }
     }
   }
 

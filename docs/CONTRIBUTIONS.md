@@ -69,6 +69,11 @@ The accompanying tests and commands let a reviewer inspect the results directly.
 - Added a session regression test and desktop/mobile browser scenarios.
 - Removed sample drivers and HTML popup interpolation; added stable markers,
   API position validation, non-overlapping polling, and map error/empty states.
+- Added optional PostgreSQL transactions, persisted rotation, and two-process
+  concurrency/recovery checks against a disposable synthetic database.
+- Restricted SignalR subscriptions to authenticated database-derived identities,
+  guarded company trip mutations, and deferred controller notifications until
+  database commit. Added unit and real-WebSocket rollback/authorization checks.
 
 These changes are current maintenance work, not historical employment outcomes.
 

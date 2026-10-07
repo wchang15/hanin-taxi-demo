@@ -6,6 +6,10 @@ make it a production-ready transportation or payment service.
 ## Before Any Public Service
 
 - Audit authorization and object ownership on every REST endpoint and SignalR method.
+  The reviewed hub requires a valid active account and permits only its own
+  database-derived channel; company note/price/cancel actions enforce trip ownership.
+  These checks are not a complete endpoint audit. Already-joined sessions are not
+  instantly revoked when account permissions change; token expiry closes the connection.
 - Extend the [two-process PostgreSQL checks](POSTGRES_DISPATCH.md) to production load,
   failover and all legacy state transitions. A global advisory lock now protects demo
   matching and controller writes, with relational uniqueness and rollback tests.

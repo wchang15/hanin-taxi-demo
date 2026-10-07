@@ -7,9 +7,9 @@ separately from the local checks below.
 
 | Check                                 | Result                        | Boundary                                                                                 |
 | ------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------- |
-| .NET 10 Release build and xUnit tests | 50 passed                     | 24 eligibility/scoring, 21 company-rotation, and 5 fare/payment cases                     |
+| .NET 10 Release build and xUnit tests | 64 passed                     | 24 eligibility/scoring, 21 company-rotation, 5 fare/payment, 14 realtime authorization/delivery cases |
 | Isolated API flow                     | 10 checks passed              | Separate process, temporary loopback port, synthetic data, zero external charges         |
-| PostgreSQL dispatch harness | 20 assertions passed | PostgreSQL 17, two real API processes, concurrent offers, state transitions, rollback, restart/crash recovery; synthetic fresh schema |
+| PostgreSQL and realtime harness | 39 assertions passed | PostgreSQL 17, two real API processes: 20 dispatch/concurrency/recovery assertions plus 19 real SignalR/ownership/post-commit assertions; synthetic fresh schema |
 | Rider Flutter tests                   | 11 passed                     | Route request lifecycle, camera bounds, coordinate conversion, airport eligibility       |
 | Driver Flutter tests                  | 3 passed                      | Location label and payment-type parsing                                                  |
 | Operator Vite production build        | Passed                        | React 18, Vite 8.3.3, React Router 7.18.4                                                |

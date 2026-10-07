@@ -11,6 +11,8 @@ import 'package:map_launcher/map_launcher.dart';
 import '../models/driver.dart';
 import '../models/user_login.dart';
 import '../services/login_service.dart';
+import '../services/hub_service.dart';
+import '../utils/secure_storage.dart';
 import '../utils/constants.dart';
 
 class DriverController extends GetxController {
@@ -101,11 +103,18 @@ class DriverController extends GetxController {
 
     try {
       await LoginService.postLogout();
-      driver.value = null;
-      refresh();
     } catch (e) {
     } finally {
-      isLoading(false);
+      driver.value = null;
+      try {
+        await Future.wait([
+          StorageService.deleteAllSecureData(),
+          HubService.stop(),
+        ]);
+      } finally {
+        refresh();
+        isLoading(false);
+      }
     }
   }
 

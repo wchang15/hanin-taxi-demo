@@ -7,12 +7,13 @@ import '../controllers/driver_controller.dart';
 import '../controllers/trip_controller.dart';
 import '../models/trip.dart';
 import '../utils/constants.dart';
+import '../utils/secure_storage.dart';
 
 class HubService {
   static HubConnection hubConnection = HubConnectionBuilder()
-      .withUrl(HUB_ADDRESS)
-      //, options: HttpConnectionOptions(accessTokenFactory: () async => await StorageService.readSecureData(JWT);))
-      //transportType: HttpTransportType.WebSockets, options: HttpConnectionOptions(skipNegotiation: true))
+      .withUrl(HUB_ADDRESS, options: HttpConnectionOptions(
+        accessTokenFactory: () async => await StorageService.readSecureData(JWT) ?? '',
+      ))
       .withAutomaticReconnect(retryDelays: [
     1000,
     1000,
@@ -66,6 +67,7 @@ class HubService {
   static bool _handlersRegistered = false;
 
   static Future<void> initSignalR() async {
+    if ((await StorageService.readSecureData(JWT))?.isNotEmpty != true) return;
     _registerHandlers();
 
     final state = hubConnection.state;
@@ -102,9 +104,6 @@ class HubService {
     TripController tripController = Get.find<TripController>();
     hubConnection.onclose(({error}) async {
       if (error != null) print(error);
-      if (hubConnection.state == HubConnectionState.Disconnected) {
-        await initSignalR();
-      }
     });
 
     hubConnection.keepAliveIntervalInMilliseconds = 1000 * 60 * 5;
@@ -201,4 +200,6 @@ class HubService {
   static bool isConnected() {
     return hubConnection.state == HubConnectionState.Connected;
   }
+
+  static Future<void> stop() async => await hubConnection.stop();
 }
