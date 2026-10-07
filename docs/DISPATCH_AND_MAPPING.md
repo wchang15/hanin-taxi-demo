@@ -13,16 +13,46 @@ across participating companies.
 
 The trade-off is explicit: queue fairness can mean a longer pickup than a nearest-car
 policy. Regional pickup eligibility still constrains assignment. No measured pickup-time
-or fairness improvement is claimed. Empty queues, declined trips, unavailable drivers,
-and concurrent assignment need explicit rules and tests before deploying this policy.
+or fairness improvement is claimed.
 
-**Current implementation boundary:** this public snapshot does not implement that
-company-round-robin scheduler. [MatchTrip](../backend/Managers/BackgroundManager.cs)
-iterates waiting drivers in global creation order and ranks eligible customer requests
-by the [scoring policy](../backend/Services/DispatchScoringService.cs). Company isolation
-and waiting-state tests validate that implementation, not the historical company rotation.
-Reproducing rotation would require a persistent company cursor and atomic assignment,
-with tests for empty/ineligible queues and concurrent workers.
+## Executable Company Rotation
+
+The October 2026 AI-assisted review adds
+[CompanyDispatchService](../backend/Services/CompanyDispatchService.cs), shared by the
+background worker and `POST /api/Demo/RunDispatch`. This implements the confirmed
+product policy now; it is not evidence of the original team's exact algorithm.
+
+1. Visit company IDs in ascending order, starting after the last company offered a trip
+   and wrapping to the beginning. Company ID is a stable tie-break, not fleet size or distance.
+2. Within that company, visit waiting drivers by queue creation time, then queue ID.
+   Skip archived/missing drivers, the two-second enqueue/decline cooldown, and drivers
+   with no eligible request. Skipped drivers keep their original queue timestamp.
+3. For the first eligible driver, retain the existing distance/wait score to choose
+   a customer, breaking ties by customer queue time and ID. That score cannot let
+   a later driver or company jump the queue. Trips must still be matching and unassigned.
+4. Mark both queues pending and save the last company ID in the same `SaveChangesAsync`
+   call. A committed offer consumes a turn, whether later accepted or declined.
+   Company-specific bookings stay in their own company and also consume a turn.
+5. Skip empty/ineligible companies. No eligible pair means no cursor change. Declining
+   retains the driver's queue position but excludes that request and applies cooldown;
+   leaving and rejoining gets a new queue timestamp under the existing enqueue endpoint.
+
+The singleton coordinator serializes its matching calls and loads each snapshot only
+after taking the lock. A fresh context prevents failed saves from leaking tracked state
+into a retry. The cursor survives request/service scopes while the demo database lives;
+it does **not** survive an API process restart because storage is in-memory.
+
+[21 coordinator tests](../tests/HaninTaxi.Tests/CompanyDispatchTests.cs) exercise rotation,
+stable ties, uneven/empty queues, cooldown and eligibility skips, company isolation,
+no-match cursor behavior, pre-save failure recovery, cancellation, shared endpoint state,
+and overlapping matching invocations. The concurrency test pauses a save while other
+calls enter, then checks unique driver/customer offers; it does not rely on lucky timing.
+
+**Production boundary:** the lock covers these two automatic matching entry points in
+one process only. Other queue mutations, crash recovery, multi-instance workers, and
+relational uniqueness/transactions are not established by these tests. A PostgreSQL
+cursor migration, conditional assignment and transactional locking, plus an outbox
+for notifications, would be needed and tested before production deployment.
 
 ## What Currently Refreshes, and When?
 

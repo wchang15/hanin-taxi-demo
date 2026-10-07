@@ -31,6 +31,7 @@ entire public snapshot. See [verification scope](docs/VALIDATION.md).
 
 | Engineering question                        | Implementation                                                                                                             | Evidence                                                                                                                          |
 | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| How do company turns stay fair?            | [CompanyDispatchService](backend/Services/CompanyDispatchService.cs)                                                     | [21 queue, failure, and concurrent-invocation cases](tests/HaninTaxi.Tests/CompanyDispatchTests.cs)                                |
 | Which driver is eligible for a request?     | [DispatchScoringService](backend/Services/DispatchScoringService.cs)                                                       | [24 dispatch tests](tests/HaninTaxi.Tests/DispatchScoringTests.cs)                                                                |
 | What if an old route arrives after a reset? | [TripController](rider-app/lib/controllers/trip_controller.dart)                                                           | [Delayed-response regression tests](rider-app/test/trip_route_request_test.dart)                                                  |
 | How does a route avoid map controls?        | [Camera fitting](rider-app/lib/utils/route_camera.dart)                                                                    | [Viewport and inset tests](rider-app/test/route_camera_test.dart)                                                                 |
@@ -56,8 +57,9 @@ a full-time Software Engineer role exploring restaurant-delivery integration wit
 the dispatch platform. That integration remained exploratory, not a shipped service.
 
 This snapshot separates the original team implementation from the October 2026
-demo restoration and engineering review. The current matcher uses global driver
-queue order plus eligible-request scoring, not the original company rotation.
+demo restoration and engineering review. The October review now implements company
+rotation in both matching entry points, with queue and concurrent-invocation tests.
+This is a new implementation of the historical policy, not recovered original code.
 See [contribution scope](docs/CONTRIBUTIONS.md) and the
 [dispatch/mapping decision record](docs/DISPATCH_AND_MAPPING.md) for that boundary,
 current 30/5/10-second timers, and a sourced routing-cost example.
@@ -146,7 +148,7 @@ and unverified areas are recorded in [VALIDATION.md](docs/VALIDATION.md).
 | ------------------ | ------------------------------------------------------------------- |
 | `rider-app/`       | Booking, fare selection, map lifecycle, payment selection           |
 | `driver-app/`      | Driver availability, acceptance, trip progress                      |
-| `backend/`         | API, shared trip model, dispatch scoring, SignalR events            |
+| `backend/`         | API, shared trip model, company rotation, eligibility, SignalR events |
 | `admin-dashboard/` | React operator interface                                            |
 | `tests/`           | Backend regression coverage                                         |
 | `scripts/`         | Isolated demo runner, API verification, source preflight            |

@@ -45,6 +45,8 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ITollService, TollService>();
 builder.Services.AddScoped<IGoogleService, GoogleService>();
 builder.Services.AddScoped<IDispatchScoringService, DispatchScoringService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<CompanyDispatchService>();
 builder.Services.AddScoped<TaxiHub>();
 builder.Services.AddHttpClient<ITollService, TollService>(client =>
 {

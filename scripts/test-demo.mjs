@@ -143,9 +143,12 @@ try {
       enumPaymentType: 4,
     },
   });
+  // Both matching entry points respect the two-second enqueue cooldown.
+  await delay(2100);
   const dispatch = await call("Demo/RunDispatch", { method: "POST" });
   check("eligible driver matched to quoted trip", () => {
     assert.equal(dispatch.matched, true);
+    assert.equal(dispatch.policy, "company-round-robin");
     assert.equal(dispatch.tripID, trip.tripID);
   });
   await call("DriverQueue/MatchTrip", { method: "POST", token: driver.token });

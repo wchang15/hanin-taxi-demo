@@ -44,6 +44,7 @@ namespace KoreanTaxi.Data
         public virtual DbSet<DriverRating> DriverRatings { get; set; }
         // Drivers waiting to get matched
         public virtual DbSet<DriverQueue> DriverQueues { get; set; }
+        public virtual DbSet<DispatchCursor> DispatchCursors { get; set; }
         // Drivers rejected CustomerQueues. Driver does not get matched with rejected queue.
         public virtual DbSet<DriverQueueRejectedCustomerQueue> DriverQueueRejectedCustomerQueues { get; set; }
         // Events for Customer

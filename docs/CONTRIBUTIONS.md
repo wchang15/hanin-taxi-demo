@@ -12,8 +12,8 @@ code review, and cross-interface workflow testing.
 - Evaluated nearby-driver matching against queue-based assignment for taxi companies
   whose drivers returned to the company base and waited their turn after trips.
   Selected company rotation with company-internal queue order: `A1 -> B1 -> A2 -> B2`.
-  The current demo matcher does not reproduce that round-robin policy; see the
-  [decision record](DISPATCH_AND_MAPPING.md) for the implementation boundary.
+  The October review implements that policy afresh; see the
+  [decision record](DISPATCH_AND_MAPPING.md) for the historical/current boundary.
 - Implemented company-specific regional pickup restrictions, including a New Jersey
   operator's New York pickup constraint. These describe configured operating rules,
   not a comprehensive legal-compliance certification.
@@ -57,6 +57,8 @@ The accompanying tests and commands let a reviewer inspect the results directly.
 - Rejected stale and out-of-order route responses and canceled superseded map animations.
 - Added regression coverage for camera bounds and asynchronous route lifecycle.
 - Reviewed dispatch eligibility; added company isolation and waiting-state guards.
+- Implemented a shared company-round-robin coordinator with a stored demo cursor,
+  driver FIFO ordering, skip rules, and 21 queue/concurrency/failure test cases.
 - Reproduced dispatch failures before fixing them and added backend unit tests.
 - Updated the prepared backend to .NET 10 and compatible EF Core/provider packages.
 - Added isolated API checks for trip completion and quote-to-settlement consistency.

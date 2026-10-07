@@ -7,7 +7,7 @@ separately from the local checks below.
 
 | Check                                 | Result                        | Boundary                                                                                 |
 | ------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------- |
-| .NET 10 Release build and xUnit tests | 29 passed                     | 24 dispatch cases and 5 fare/payment cases                                               |
+| .NET 10 Release build and xUnit tests | 50 passed                     | 24 eligibility/scoring, 21 company-rotation, and 5 fare/payment cases                     |
 | Isolated API flow                     | 10 checks passed              | Separate process, temporary loopback port, synthetic data, zero external charges         |
 | Rider Flutter tests                   | 11 passed                     | Route request lifecycle, camera bounds, coordinate conversion, airport eligibility       |
 | Driver Flutter tests                  | 3 passed                      | Location label and payment-type parsing                                                  |
@@ -93,7 +93,9 @@ or evidence of a fresh native build of every component.
 - A fresh native simulator build of this entire prepared snapshot against the updated
   .NET 10 API. Included screenshots show the previously restored iOS app.
 - Production PostgreSQL schema/migrations, real-card payments, refunds, live messaging.
-- Concurrency, reconnect recovery, duplicate events, and full authorization coverage.
+- Multi-instance or non-matcher queue-write concurrency, reconnect recovery, duplicate
+  events, and full authorization coverage. The 21 new coordinator tests cover overlapping
+  calls to the single-process matching service, not those broader guarantees.
 - All third-party asset rights and a comprehensive secret/security audit.
 - Inherited compiler/lint warnings and operator bundle-size optimization.
 

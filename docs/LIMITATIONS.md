@@ -6,14 +6,16 @@ make it a production-ready transportation or payment service.
 ## Before Any Public Service
 
 - Audit authorization and object ownership on every REST endpoint and SignalR method.
-- Add atomic dispatch assignment and concurrent-request/retry tests. An in-memory
-  database does not enforce relational transactions or production constraints.
+- Add relational atomic dispatch assignment and multi-instance/concurrent queue-writer
+  tests. The current singleton lock and overlapping-call tests cover automatic matching
+  within one demo process only, not all queue endpoints. InMemory does not enforce
+  relational transactions; notifications are not a transactional outbox.
 - Validate live payment state transitions, webhook signatures, idempotency, refunds,
   and reconciliation. The demo bypasses external charging.
 - Review password handling, session refresh, brute-force defenses, CORS, rate limits,
   sensitive logging, and retention of identity/location data.
 - Test PostgreSQL schema migration and query behavior on a disposable real database.
-- Add a PostgreSQL migration for the new `Payment.CashAmount` field before enabling
+- Add PostgreSQL migrations for `DispatchCursor` and `Payment.CashAmount` before enabling
   database-backed use; only the InMemory path is supported in this snapshot.
 - Continue dependency advisory monitoring; a clean registry audit is not a code security audit.
 - Configure supported routing/tile, messaging, monitoring, backup, and hosting services.

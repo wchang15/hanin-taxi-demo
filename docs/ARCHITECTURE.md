@@ -8,7 +8,9 @@ flowchart LR
     Driver[Flutter driver] -->|REST availability and trip actions| API
     Operator[React dispatcher] -->|REST dispatch operations| API
     API --> State[Shared trip and queue records]
-    Matcher[Matching worker] --> Scoring[Eligibility and heuristic score]
+    Matcher[Matching worker] --> Rotation[Company rotation and driver queue]
+    API --> Rotation
+    Rotation --> Scoring[Eligibility and heuristic score]
     Scoring --> State
     API --> Hub[SignalR hub]
     Matcher --> Hub
@@ -41,11 +43,14 @@ Waiting time is clamped to zero for future timestamps. The app-ride pickup searc
 radius is five miles plus whole minutes waited. These are prototype product rules,
 not a learned model or a statement of current transport regulations.
 
-The [matching worker](../backend/Managers/BackgroundManager.cs) visits waiting
-drivers in queue order and chooses the highest-scoring eligible customer for each.
-That is a greedy selection, not a globally optimal fleet assignment. The demo
-endpoint instead picks the highest-scoring pair for one controlled matching step.
-Neither path establishes concurrency-safe assignment across multiple API instances.
+The [matching worker](../backend/Managers/BackgroundManager.cs) and demo endpoint
+share [CompanyDispatchService](../backend/Services/CompanyDispatchService.cs).
+It rotates companies, preserves their eligible driver queue order, then scores
+customers for that driver. An in-memory database cursor advances only on a saved
+offer. Matching calls are serialized within one API process, with a fresh queue
+snapshot inside the lock. This is a fairness policy, not a fleet-wide pickup-time
+optimization or multi-instance assignment guarantee. See the
+[policy and exception rules](DISPATCH_AND_MAPPING.md#executable-company-rotation).
 
 ## 2. One Quote, Separate Payment State
 

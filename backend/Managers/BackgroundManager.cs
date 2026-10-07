@@ -19,16 +19,16 @@ namespace KoreanTaxi.Managers
         private readonly IHubContext<TaxiHub> hubContext;
         private readonly TripManager tripManager;
         private readonly HubManager hubManager;
-        private readonly IDispatchScoringService dispatchScoringService;
+        private readonly CompanyDispatchService dispatch;
 
-        public BackgroundManager(TaxiDbContext ctx, IServiceScopeFactory factory, IHubContext<TaxiHub> hubContext, TripManager tripManager, HubManager hubManager, IDispatchScoringService dispatchScoringService)
+        public BackgroundManager(TaxiDbContext ctx, IServiceScopeFactory factory, IHubContext<TaxiHub> hubContext, TripManager tripManager, HubManager hubManager, CompanyDispatchService dispatch)
         {
             this.ctx = ctx;
             this.factory = factory;
             this.hubContext = hubContext;
             this.tripManager = tripManager;
             this.hubManager = hubManager;
-            this.dispatchScoringService = dispatchScoringService;
+            this.dispatch = dispatch;
         }
 
         public List<AddressParseResult> AddressParserTest()
@@ -258,58 +258,23 @@ namespace KoreanTaxi.Managers
         {
             var matchedTripCount = 0;
             var error = string.Empty;
-            var driverQueues = await ctx.DriverQueues
-                .Include(x => x.DriverQueueRejectedCustomerQueues)
-                .Include(x => x.Driver)
-                    .ThenInclude(x => x.Company)
-                    .ThenInclude(x => x.CompanyOperatingStates)
-                .Include(x => x.Driver)
-                    .ThenInclude(x => x.Taxi)
-                .Where(x => x.QueueStatus == EnumQueueStatus.WAITING)
-                .OrderBy(x => x.CreatedDateTime)
-                .ToListAsync();
-            var customerQueues = await ctx.CustomerQueues
-                .Include(x => x.Trip)
-                    .ThenInclude(x => x.PickupLocation)
-                .Include(x => x.Trip)
-                    .ThenInclude(x => x.DropoffLocation)
-                .OrderBy(x => x.CreatedDateTime)
-                .Where(x => x.QueueStatus == EnumQueueStatus.WAITING).ToListAsync();
-
+            var dqCount = 0;
+            var cqCount = 0;
             try
             {
-                var nowUtc = DateTime.UtcNow;
-                foreach (var dq in driverQueues)
+                var attempt = await dispatch.MatchNextAsync();
+                dqCount = attempt.WaitingDrivers;
+                cqCount = attempt.WaitingCustomers;
+                // Bound each pass even if new drivers join while matching is running.
+                for (var i = 0; i < dqCount && attempt.Offer != null; i++)
                 {
-                    if ((int)(nowUtc - dq.DeclinedTime).TotalSeconds < Constants.DRIVER_MATCH_IDLE_TIME) continue;
-
-                    var bestCandidate = customerQueues
-                        .Where(cq => cq.QueueStatus == EnumQueueStatus.WAITING)
-                        .Select(cq => new
-                        {
-                            CustomerQueue = cq,
-                            MatchScore = dispatchScoringService.ScoreCandidate(dq, cq, nowUtc)
-                        })
-                        .Where(x => x.MatchScore.IsEligible)
-                        .OrderByDescending(x => x.MatchScore.Score)
-                        .ThenBy(x => x.CustomerQueue.CreatedDateTime)
-                        .FirstOrDefault();
-
-                    if (bestCandidate == null)
-                    {
-                        continue;
-                    }
-
-                    var cq = bestCandidate.CustomerQueue;
-                    dq.QueueStatus = EnumQueueStatus.PENDING;
-                    dq.TripID = cq.TripID;
-                    dq.CustomerQueueID = cq.CustomerQueueID;
-                    cq.QueueStatus = EnumQueueStatus.PENDING;
-                    ctx.SaveChanges();
+                    var offer = attempt.Offer;
                     matchedTripCount += 1;
-
-                    var tripReturnForDriver = await tripManager.TripReturnForDriver(cq.Trip);
-                    await hubManager.SendToClient($"{Constants.DRIVER}{dq.DriverID}", Constants.MATCH, cq.Trip.TripStatus, tripReturnForDriver);
+                    var trip = await tripManager.GetTripByID(offer.TripID)
+                        ?? throw new InvalidOperationException("Dispatched trip no longer exists.");
+                    var tripReturnForDriver = await tripManager.TripReturnForDriver(trip);
+                    await hubManager.SendToClient($"{Constants.DRIVER}{offer.DriverID}", Constants.MATCH, trip.TripStatus, tripReturnForDriver);
+                    if (i + 1 < dqCount) attempt = await dispatch.MatchNextAsync();
                 }
             }
             catch (Exception ex)
@@ -318,8 +283,6 @@ namespace KoreanTaxi.Managers
             }
             finally
             {
-                var cqCount = customerQueues.Count();
-                var dqCount = driverQueues.Count();
                 var err = error != string.Empty;
                 if ((cqCount != 0 && dqCount != 0) || err)
                 {
