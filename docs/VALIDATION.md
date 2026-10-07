@@ -78,6 +78,16 @@ driver list and API-backed map at 1280px and 390px widths. Screenshots are actua
 browser captures of synthetic data. The map preserves the viewport while polling;
 "Last fetched" is a fetch timestamp, not proof of GPS freshness.
 
+## Narrated Workflow Capture
+
+The [45-second demo](https://www.woochangchang.com/hanin-taxi.html#demo) uses actual
+restored-client screens and synthetic records. Driver pickup confirmation and
+completion were recaptured against reviewed API revision `4b43179` after replacing
+an outdated local backend. The actual driver UI now shows the same `$44.07` cash
+fare as the rider quote and final total. The API was verified in-memory with external
+payments disabled. The edited sequence is not an uninterrupted passenger journey
+or evidence of a fresh native build of every component.
+
 ## Not Yet Verified
 
 - A fresh native simulator build of this entire prepared snapshot against the updated

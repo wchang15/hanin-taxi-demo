@@ -1,10 +1,13 @@
 # Hanin Taxi
 
+[![Checks](https://github.com/wchang15/hanin-taxi-demo/actions/workflows/ci.yml/badge.svg)](https://github.com/wchang15/hanin-taxi-demo/actions/workflows/ci.yml)
+
 A team-built rider, driver, and dispatcher platform, restored as a reproducible
 local demonstration. Flutter clients share trip state with an ASP.NET Core API
 and a React operator dashboard.
 
 [Product case study](https://www.woochangchang.com/hanin-taxi.html) |
+[45-second narrated demo](https://www.woochangchang.com/hanin-taxi.html#demo) |
 [Architecture](docs/ARCHITECTURE.md) |
 [Dispatch and mapping decisions](docs/DISPATCH_AND_MAPPING.md) |
 [Contribution scope](docs/CONTRIBUTIONS.md) |
@@ -16,6 +19,13 @@ and a React operator dashboard.
 </p>
 
 Actual iOS simulator captures, using synthetic accounts in an internal-test environment.
+
+The narrated demo connects rider request, driver acceptance, operator visibility,
+and completion. It is an edited internal-test workflow, not passenger service.
+The driver start/completion inserts were recaptured using the restored iOS client
+against reviewed API revision `4b43179`, confirming the displayed `$44.07` cash fare.
+No external payment was made. This does not replace a fresh native build of the
+entire public snapshot. See [verification scope](docs/VALIDATION.md).
 
 ## Start Here
 

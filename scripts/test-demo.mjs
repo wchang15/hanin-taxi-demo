@@ -154,6 +154,9 @@ try {
     token: driver.token,
     body: destination,
   });
+  const driverTrip = await call("DriverQueue/GetDriverQueueStatus", {
+    token: driver.token,
+  });
   const completed = await call("Trip/CompleteTrip", {
     method: "POST",
     token: driver.token,
@@ -167,6 +170,8 @@ try {
     token: customer.token,
   });
   check("cash settlement preserves quoted fare", () => {
+    assert.equal(driverTrip.tripID, trip.tripID);
+    assert.equal(driverTrip.tripAmount, 44.07);
     assert.equal(paid.fullAmount, 44.07);
     assert.equal(paid.paymentStatus, 2);
     assert.equal(paid.paymentType, 4);
